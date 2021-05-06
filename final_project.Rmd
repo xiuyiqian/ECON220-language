@@ -1,0 +1,255 @@
+---
+title: "final project"
+author: "Xiuyi Qian"
+date: "10/6/2020"
+output: 
+  html_document: 
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(tidyverse)
+library(kableExtra)
+library(effects)
+```
+# Introduction
+in the current society, with more convenient transportation, there are more connections being built across countries or even across the continents. However, it is a common issue that we all have probably met that we cannot understand the locals when we get to an unfamiliar country.Thus, to improve ourselves and to make our life easier, many universities and high schools have required students to master the second language. And there is a trending that people do get to know more languages than before. 
+
+In addition, nowadays, with more travelers around the world, is it equivalent to the point that the more countries people travel to, the more language they get to know. Whether traveling is contingent to the language is one of the topics I am going to analyze.
+
+Personally, I am born in Japan but moved to China when I was in primary school. Then, I have come to the United States for College. Thus, getting in touch with three different languages really enriches my life. Thus, through this project, I hope to find out the most language people so far have recognized as the first language and what is the average number of language University students in the united states get to know.
+
+
+```{r,echo=FALSE}
+knitr::include_graphics("language.jpeg")
+```
+
+
+
+Based on the following studies, I am trying to figure out
+
+1)whether dualcitizen-ship plays key role in the number of languages students speaking
+
+2)whether the number of countries have been to is related to the number of languages speaking
+
+3)whether the international students tend to master more languages
+
+#data set
+## The Reference Website and importing data
+this data set comes from https://www.kaggle.com/. Kaggle is a data collecting website using over 50,00 public data sets and over 400,00 public notebooks.
+```{r}
+cac <- read.csv("D:/Emory/Econ220lab/final/countries and continents.csv", header=FALSE)
+TravelStudy <- read.csv("D:/Emory/Econ220lab/final/TravelStudy.csv")
+```
+
+
+## External Sources and Data
+Travel Study
+This data was collected as part of a travel study conducted by my Advanced Statistics students.
+
+The variables are described below,
+DomInt: "Are you an international or domestic student?"
+DayBoarding: "Are you a day or boarding student?"
+Countries: "How many countries have you been to?"
+Languages: "How many languages do you speak?"
+DualCitizenship: "Do you have dual citizenship?"
+
+The reason I choose this data is due to that I can build the association between countries students have been to with the languages they can speak.
+As I have mentioned in the introduction that the hobby of traveling around the world may be a key factor associating with the number of languages students know
+
+```{r pressure}
+ts <- TravelStudy %>% select(DomInt, Countries, Languages, DualCitizenship)
+str(ts)
+head(ts,6)
+summary(ts)
+```
+There are 95 observants with 5 features
+
+top six samples of the data
+
+
+## Analysis or summary of data
+```{r}
+ts%>%select(Countries,Languages)%>%summarise(mean_country = mean(ts$Countries,na.rm = TRUE),mean_languages = mean(ts$Languages,na.rm=TRUE), sd_country = sd(ts$Countries,na.rm = TRUE), sd_language=sd(ts$Languages,na.rm = TRUE),
+median_countries = median(ts$Countries,na.rm = TRUE),
+median_languages = median(ts$Languages,na.rm = TRUE)
+)
+
+
+(c <- table(ts$DomInt,ts$DualCitizenship))
+kable(prop.table(c), digits=3,  caption = "DomInt by Dual-Cit") %>% kable_styling(bootstrap_options = c("striped", "hover"),full_width = F) %>%  add_header_above(c("Student-Type"=1,"Dual-Citizen"=2))
+
+```
+
+
+# Data cleaning 
+create a new column called NT(number of countries had gone to)
+```{r}
+ts$NT<-factor(ts$Countries,levels = c("zero","one","between 2 and 4", "between 5 and 9","more than 10"),ordered = TRUE )
+ts$NT[ts$Countries==0] <- "zero"
+ts$NT[ts$Countries==1] <- "one"
+ts$NT[ts$Countries>1  & ts$Countries<5] <- "between 2 and 4"
+ts$NT[ts$Countries>=5 & ts$Countries<10] <- "between 5 and 9"
+ts$NT[ts$Countries>=10] <- "more than 10"
+summary(ts$NT)
+```
+
+sepearing the international student and domestic
+```{r}
+inter<- ts %>% filter(DomInt=="Domestic")
+dom <- ts %>%filter(DomInt=="International")
+
+nrow_inter <-nrow(inter)
+nrow_dom <-nrow(dom)
+
+head(inter,5)
+head(dom,5)
+```
+
+
+52 domestic students and 43 international students
+
+#data analysis
+## max number intern and dom students have been to
+```{r}
+inter_c <- inter%>%arrange(desc(Countries))
+dom_c <- dom%>%arrange(desc(Countries))
+inter_c$Countries[1]
+dom_c$Countries[1]
+```
+the maximum countries international student has been to is 22
+the maximum countries domestic student has been to is 22
+
+## comparison of domestic and international ones
+```{r}
+mean(ts[ts$DomInt=="Domestic",]$Countries,na.rm = TRUE)
+mean(ts[ts$DomInt=="International",]$Countries,na.rm = TRUE)
+mean(ts$Countries,na.rm = TRUE)
+```
+mean of countries domestic students going is around 4 (4.27)
+mean of countries international students going is around 10 (10.42)
+
+which indicates international studens go far more countries than domestic ones do
+* overall, the mean number of countries students go is 7 
+
+# Confidence intervals and Two sample t test
+## number of countries domestic and international students have travelled to
+1)
+null hypothesis: the difference between number of countries domestic and international students have traveled to is zero
+
+alternative hypothesis: the difference number of countries domestic and international students have traveled to is zero is not zero
+```{r}
+t.test(Countries ~ DomInt, data = ts)
+```
+The confidence interval with 95 percent confidence results in the range from -8.99 to - 3.31. 
+as absolute t value(4.33) is less than 4 and p value of 5.487e-05 is far less than 0.01; with the significance level of 0.05,we reject the null hypothesis that  the difference between number of countries domestic and international students have traveled to is not zero.
+
+## number of languages domestic and international students have mastered
+2)
+null hypothesis: the difference between number of languages domestic and international  students have learned is zero
+
+alternative hypothesis: the difference number of language domestic and international  students have learned is not zero
+```{r}
+t.test(Languages ~ DomInt, data = ts)
+```
+The confidence interval with 95 percent confidence results in the range from -1.54 to - 0.84. 
+as absolute t value(6.78) is more than 6 and p value of 6.889e-09 is less than 0.01, we reject the null hypothesis that  the difference between number of countries domestic and international students have mastered is not zero.
+
+# Graphs
+
+## comparison of population of dual-citizen and non-dual citizen 
+```{r}
+ggplot(ts, mapping=aes(x=DualCitizenship)) +
+  geom_bar(fill="lightgreen") +
+  ylab("Countries had been to") + xlab("DualCitizenship") +
+  ggtitle("Figure 1:Dual-citizen and non-Dual-citizen population") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+Non-Dual citizenship occupies a bigger proportion of the sample. 
+
+## distribution of countries
+```{r}
+quantile(ts$Countries)
+
+ggplot(ts, aes(x=Countries)) +
+geom_histogram(aes(y =..density.., fill=..count..), bins=20, alpha = .8)+ #
+   geom_density(col="green") + 
+labs(title="Histogram of countries")+ 
+   theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+## quantile of dual-citizen group and non-dual-citizen's
+From the density histogram graph, we can see the range of countries students have been traveling to still concentrates on the rage from 0 to 15.Thus, for the following graph, I'd like to to concentrate my analysis without outliers.
+
+```{r}
+quantile(ts[ts$DualCitizenship=="Yes",]$Countries)
+quantile(ts[ts$DualCitizenship=="No",]$Countries)
+
+ts_over_5 <- subset(ts, ts$NT=="between 5 and 9"|ts$NT=="between 2 and 4"| ts$NT=="one")
+ggplot(ts_over_5, mapping=aes(x=DualCitizenship, y=Countries)) +
+  geom_boxplot(fill="purple") +
+  ylab("Countries had been to") + xlab("DualCitizenship") +
+  ggtitle("Dual-citizen and countries") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+Average number of countries Students with DualCitizenShip have been to is more than the non-dual-citizens do. And from the quantiled data we can see the 25th to 75th population of Dual citizenship is from 6.5 to 12.75 while non-dual citizen ship is from 2 to 9.
+
+## correlation between countries and languages based on the group of students type (dom and Int)
+```{r}
+ggplot(ts, aes(Countries, Languages)) + geom_point(color = "blue", alpha = 0.5) + 
+    geom_smooth(method = "lm") + ggtitle("Figure 2: countries vs languages")
+
+ggplot(inter_c,aes(x=Countries, y= Languages))+
+   geom_smooth(method = "lm")+
+  geom_point( alpha = 0.2, size=3, shape=6, color= "brown")+
+  labs(x="countries",y="languages",title="Figure 3:countries vs    languages for international")+
+  theme_minimal()
+
+ggplot(dom_c,aes(x=Countries, y= Languages))+
+   geom_smooth(method = "lm")+
+  geom_point( alpha = 0.2, size=3, shape=6, color= "red")+
+  labs(x="countries",y="languages",title="Figure 4 :countries vs languages for domestic")+
+  theme_minimal()
+```
+from the graph, it seems the more countries the students have been to, the more languages they are capable for speaking of as the slope is positive.
+
+```{r}
+cor(ts$Countries,ts$Languages)
+cor(inter_c$Countries,inter_c$Languages)
+cor(dom_c$Countries,dom_c$Languages)
+```
+Even generally, the correlation between countries traveling to and languages spoken is positive. But we surprisingly find out for international students, they tend to go under a flat line as there is not obvious linear relationship between two variables and the correlation value even shows a negative one. Comparing to international students, domestics student tend to master the language well after traveling or being exchanged to countries.
+
+
+
+# Conclusion
+It is easy for people to think in the way that learning a new language when traveling is the best way.It makes getting around easier; whether it’s for reading signs or asking directions – it saves you from the likelihood of getting lost in a foreign country. Traveling introduces a lot of diversity as well.Getting to know the native people that you might never again come across holds an excitement that just can’t be missed. However, at least to students, from the data we can see it is probably not the case.
+
+To conclude and summarize the findings of the statistics:
+
+a)
+Firstly, there is difference between number of language domestic and international  students have learned from the t statistics. 
+
+```{r,echo=FALSE}
+knitr::include_graphics("international_student_impact.PNG")
+```
+
+from another research conducted in New Zealand, we can see, another reason international students behave not better than domestic is that they still tend to play with their co-national friends rather than exploring new connections to the local
+
+b)
+the amount of countries students have dual-citizenship traveling to is more than students without dual-citizenship, and the average difference between them is around 5 countries.
+
+c) 
+Comparing to international students, domestic students are more likely to learn or master language when they do the traveling.
+For internationally student, even if they do the traveling, they seem not likely to learn the language intentionally even though they know more languages than domestic ones do. Thus, the number of countries traveling to doesn't lineally correlates to number of languages known obviously for international students.
+
+
+
+
+# Reference
+https://www.educationcounts.govt.nz/publications/international/the_impact_of_international_students_on_domestic_students_and_host_institutions
+
+https://etoninstitute.com/blog/5-benefits-of-learning-new-language-when-travelling
